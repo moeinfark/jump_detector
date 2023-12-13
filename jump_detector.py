@@ -308,8 +308,7 @@ def check_real_buy_orders():
 
 
 def create_real_buy_orders():
-    if dont_buy:
-        return
+
     list_for_sort = []
     update_prices()
     for order_ in buy_orders:
@@ -337,6 +336,9 @@ def create_real_buy_orders():
                 send_message(symbol_help + " was deleted from buy orders because we failed buying in entry price!")
         for order_ in list_of_remove:
             buy_orders.pop(order_)
+
+    if dont_buy:
+        return
 
     just_remove_it = []
     for order__ in buy_orders:
@@ -443,6 +445,26 @@ def orders_update():
 
 # print(get_balance_free("USDT"))
 
+def reset_everything():
+    orders_in_binance = client.get_open_orders()
+    for order_ in orders_in_binance:
+        if order_['side'] == 'BUY':
+            _pair = (order_['symbol'], order_['orderId'])
+            _id = binance_reverse_map[_pair]
+            if True:
+                cancel_order(order_['symbol'], order_['orderId'])
+                send_message(red_cross_mark + " " + str(order_['symbol']) + " buy order is canceled!")
+
+    binance_orders_id.clear()
+    binance_map.clear()
+    binance_reverse_map.clear()
+    buy_orders.clear()
+    sell_orders.clear()
+    global buy_order_counter
+    global the_last_candle_time
+    buy_order_counter = 1
+    the_last_candle_time = -1
+
 
 telegram_message_offset = 987615628
 
@@ -450,6 +472,7 @@ telegram_message_offset = 987615628
 def check_orders():
     global telegram_message_offset
     global dont_buy
+    global each_order_size
 
     request_ = "https://api.telegram.org/bot1893930379:AAG1i5MhdCNk6mVqzlTHStoYFob1L_HWNvs/getUpdates?chat_id=fGzRBdSpH0FlNzlk&offset=" + str(
         telegram_message_offset)
@@ -472,6 +495,10 @@ def check_orders():
                 elif message_.lower() == "do buy":
                     dont_buy = False
                     send_message_to_control_group("bot changed position to do buy!")
+                elif message_.lower() == "reset":
+                    reset_everything()
+                    send_message("The bot was reset!")
+                    send_message_to_control_group("The bot was reset!")
                 elif message_.lower() == "don't buy" or message_.lower() == "dont buy" or message_.lower() == "do not buy":
                     dont_buy = True
                     send_message_to_control_group("bot changed position to don't buy!")
@@ -496,6 +523,17 @@ def check_orders():
                             break
                 elif message_items[0].lower() == 'buy':
                     print('buy')
+                elif message_items[0].lower() == 'ordersize':
+                    each_order_size = float(message_items[1])
+                    send_message("order size changed to: " + str(each_order_size))
+                    orders_in_binance = client.get_open_orders()
+                    for order_ in orders_in_binance:
+                        if order_['side'] == 'BUY':
+                            _pair = (order_['symbol'], order_['orderId'])
+                            _id = binance_reverse_map[_pair]
+                            if True:
+                                cancel_order(order_['symbol'], order_['orderId'])
+                                send_message(red_cross_mark + " " + str(order_['symbol']) + " buy order is canceled!")
                 elif message_items[0].lower() == 'sell':
                     if len(message_items) == 3:
                         _symbol = str(message_items[1]).upper()
@@ -513,6 +551,7 @@ def check_orders():
                         send_message(hand_write + " sell set for " + _symbol + "!")
                         send_message_to_control_group("Your message received and well done!")
             telegram_message_offset = _i['update_id'] + 1
+
 
 
 while True:
@@ -584,3 +623,4 @@ while True:
     Big_message = Big_message + rocket + rocket + " total price is: " + str(BTC_price_to_usdt*btc_quantity) + "$ " + rocket + rocket
 
     send_message(Big_message)
+
